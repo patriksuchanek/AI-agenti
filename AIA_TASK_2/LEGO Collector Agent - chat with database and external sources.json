@@ -1,0 +1,359 @@
+{
+  "name": "LEGO Collector Agent - chat with database and external sources",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "f552db81-e71f-4668-988d-a0a62d746f0f",
+      "name": "When chat message received",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "position": [
+        -432,
+        256
+      ],
+      "webhookId": "cf1de04f-3e38-426c-89f0-3bdb110a5dcf",
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "agent": "openAiFunctionsAgent",
+        "options": {
+          "systemMessage": "AI agent pro správu a rozšiřování LEGO sbírky. Pracuje s databází setů v Postgresu a vyhledává doplňující informace na internetu.\n\nFunkce:\nDatabázové operace\nSpouští SQL dotazy nad databází sbírky.\nVždy používá schema prefix (např. public.sets).\nVrací seznam setů, statistiky (počet setů, dílků, poměr vlastněných/chybějících).\nUmí aktualizovat údaje (např. které sety už mám).\n\nExterní zdroje\nWikipedia: základní info o sériích, historii, zajímavostech.\nLego.com: detailní data o setech, dílcích a cenách. Oficiální web.\n\nKombinace dat\nSpojuje vlastní databázi s informacemi z webu.\nNapř. najde, které sety mám, a pro chybějící doplní ceny z webu.\n\nPravidla:\nPři práci s DB vždy uvádět schema prefix.\nPokud není známá struktura tabulek, nejdřív načíst schéma a definici.\nPro ceny a doplňkové informace využívat Wikipedia nebo Lego web.\nOdpovědi poskytovat stručně a přehledně."
+        }
+      },
+      "id": "0dd50aa6-7bc2-4870-a7be-a8da8028c0e3",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [
+        112,
+        256
+      ],
+      "typeVersion": 1.7
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4.1-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "id": "496a5961-1d2d-4025-83c0-6cd36090ecb9",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "position": [
+        -176,
+        496
+      ],
+      "typeVersion": 1.2,
+      "credentials": {
+        "openAiApi": {
+          "id": "bnxG0PNWqzLNZ3Gt",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Získej definici tabulky, abys zjistil všechny sloupce a jejich datové typy.",
+        "operation": "executeQuery",
+        "query": "select\n  c.column_name,\n  c.data_type,\n  c.is_nullable,\n  c.column_default,\n  tc.constraint_type,\n  ccu.table_name AS referenced_table,\n  ccu.column_name AS referenced_column\nfrom\n  information_schema.columns c\nLEFT join\n  information_schema.key_column_usage kcu\n  ON c.table_name = kcu.table_name\n  AND c.column_name = kcu.column_name\nLEFT join\n  information_schema.table_constraints tc\n  ON kcu.constraint_name = tc.constraint_name\n  AND tc.constraint_type = 'FOREIGN KEY'\nLEFT join\n  information_schema.constraint_column_usage ccu\n  ON tc.constraint_name = ccu.constraint_name\nwhere\n  c.table_name = '{{ $fromAI(\"table_name\") }}'\n  AND c.table_schema = '{{ $fromAI(\"schema_name\") }}'\norder by\n  c.ordinal_position",
+        "options": {}
+      },
+      "id": "4f9faa15-6bb3-46f5-b1fc-178fa77bd796",
+      "name": "Get Table Definition",
+      "type": "n8n-nodes-base.postgresTool",
+      "position": [
+        288,
+        496
+      ],
+      "typeVersion": 2.5,
+      "credentials": {
+        "postgres": {
+          "id": "KvccgS9AnuQXTfHQ",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "LEGO Collector Agent\n1. Nejdříve je nutné přidat **OpenAI**, **SerpAPI*** a **postgresql** credentials (případně na jakýkoliv jiný LLM a databázi.\n2. Kliknout na **Chat** button a začít se ptát na otázky týkající se databáze.\n3. Teoreticky se dá ptát i na jiné otázky, jelikož je napojená i Wikipedia a web search pomocí SerpAPI",
+        "height": 216,
+        "width": 368,
+        "color": 5
+      },
+      "id": "06d4b0ee-2d01-4ad7-b378-0d0f8340c127",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -912,
+        48
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "contextWindowLength": 10
+      },
+      "id": "9715c2cd-19c9-4182-9797-7357ccef5147",
+      "name": "Chat History",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "position": [
+        -32,
+        496
+      ],
+      "typeVersion": 1.3
+    },
+    {
+      "parameters": {
+        "content": "Použité nástroje:\n1. Execute SQL Query: Pouští jakékoliv query, které si agent uzná za vhodné.\n2. Get DB Schema and Tables List: Když chceme vidět jaké tabulky v databázi máme.\n3. Get Table Definition: Vrací názvy sloupců v tabulkách s případnou definicí - není úplně zadaná, takže AI agent určuje sám.\n4. Wikipedia: Vyhledává informace na wikipedii.\n5. HTTP Request: Nastaveno na oficiální stránky lego.com, pro vyhledávání setů a informací o nich\n6. SerpAPI: Nastaveno na vyhledávání na webu",
+        "height": 300,
+        "width": 370,
+        "color": 7
+      },
+      "id": "04c50abe-e097-4c12-a976-fd7356a6cda9",
+      "name": "Sticky Note3",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        544,
+        64
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Získej všechna data z PostgreSQL a ujisti se, že tabulky doplňuješ se správným schématem. Každá tabulka je v databázi přiřazena k určitému schématu.",
+        "operation": "executeQuery",
+        "query": "{{ $fromAI(\"sql_query\", \"SQL Query\") }}",
+        "options": {}
+      },
+      "id": "ce578962-cb60-437f-9abf-43a6e2cb7d23",
+      "name": "Execute SQL Query",
+      "type": "n8n-nodes-base.postgresTool",
+      "position": [
+        112,
+        496
+      ],
+      "typeVersion": 2.5,
+      "credentials": {
+        "postgres": {
+          "id": "KvccgS9AnuQXTfHQ",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Získej list všech tabulek a jejich schémat z databáze",
+        "operation": "executeQuery",
+        "query": "SELECT \n    table_schema,\n    table_name\nFROM information_schema.tables\nWHERE table_type = 'BASE TABLE'\n    AND table_schema NOT IN ('pg_catalog', 'information_schema')\nORDER BY table_schema, table_name;",
+        "options": {}
+      },
+      "id": "ce215218-77af-4932-9f72-6dff339caa7c",
+      "name": "Get DB Schema and Tables List",
+      "type": "n8n-nodes-base.postgresTool",
+      "position": [
+        448,
+        496
+      ],
+      "typeVersion": 2.5,
+      "credentials": {
+        "postgres": {
+          "id": "KvccgS9AnuQXTfHQ",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.toolWikipedia",
+      "typeVersion": 1,
+      "position": [
+        592,
+        496
+      ],
+      "id": "677bedd0-b939-488b-b2f5-42b9a9115309",
+      "name": "Wikipedia"
+    },
+    {
+      "parameters": {
+        "toolDescription": "Najdi si v databázi set a na stránkách zjisti jeho cenu, pokud se ještě prodává.",
+        "url": "https://www.lego.com/cs-cz/search",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters0_Name', ``, 'string') }}",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters0_Value', ``, 'string') }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            },
+            {
+              "name": "Accept",
+              "value": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.2,
+      "position": [
+        720,
+        496
+      ],
+      "id": "fea43135-10ee-4fda-b875-ac1ad76689c8",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolSerpApi",
+      "typeVersion": 1,
+      "position": [
+        848,
+        496
+      ],
+      "id": "5d5ffcbd-c418-4a62-9d9f-a1c6d0c2a7a8",
+      "name": "SerpAPI",
+      "credentials": {
+        "serpApi": {
+          "id": "B2eM5qsxn03wcaOx",
+          "name": "SerpAPI account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Chat History": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute SQL Query": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Table Definition": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get DB Schema and Tables List": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wikipedia": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        []
+      ]
+    },
+    "SerpAPI": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "d34755b4-7f32-45de-995a-4de672d277dd",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "156f4a04b10c7eb5c1e5031497709f30b6918d8c61c18e8d4b090422770220be"
+  },
+  "id": "QUpu72JkYAavrB1a",
+  "tags": []
+}
