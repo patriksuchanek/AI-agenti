@@ -1,6 +1,3 @@
-# AI Agent pomocí Autogen s ReAct architekturou a MCP nástroji
-# Lekce 7 - Praktické cvičení
-
 import os
 import json
 import sqlite3
@@ -31,7 +28,6 @@ class DatabaseTool:
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
-        # Vytvoření tabulky uživatelů
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY,
@@ -42,7 +38,6 @@ class DatabaseTool:
             )
         ''')
         
-        # Vytvoření tabulky produktů
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS products (
                 id INTEGER PRIMARY KEY,
@@ -63,7 +58,6 @@ class DatabaseTool:
             )
         ''')
         
-        # Vytvoření tabulky objednávek
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS orders (
                 id INTEGER PRIMARY KEY,
@@ -78,14 +72,12 @@ class DatabaseTool:
             )
         ''')
         
-        # Ukázkové uživatele
         sample_users = [
             ("Jan Novák", "jan@email.com", 30, "Praha"),
             ("Marie Svobodová", "marie@email.com", 25, "Brno"),
             ("Petr Dvořák", "petr@email.com", 35, "Ostrava"),
         ]
         
-        # Ukázkové produkty
         sample_products = [
             ("MacBook Air M2", "Apple", "MacBook Air 13''", 32990.0, 35990.0, "Elektronika", "Notebooky", 
              "13'' notebook s Apple M2 čipem", 
@@ -104,7 +96,6 @@ class DatabaseTool:
              "12GB GDDR6X, PCI Express 4.0", 6, 4.8, 94, "Mironet", "2024-01-25"),
         ]
         
-        # Ukázkové objednávky
         sample_orders = [
             (1, 1, 1, 32990.0, "2024-02-25", "Doručena"),
             (2, 3, 1, 28990.0, "2024-02-26", "V přípravě"),
@@ -125,7 +116,6 @@ class DatabaseTool:
         conn.close()
     
     def execute_query(self, query: str) -> List[Dict[str, Any]]:
-        """Vykonání SQL dotazu"""
         try:
             conn = sqlite3.connect(self.db_path)
             conn.row_factory = sqlite3.Row
@@ -240,13 +230,11 @@ class TavilySearchTool:
         }
 
 
-# Globální instance nástrojů
 db_tool = DatabaseTool()
 wiki_tool = WikipediaTool()
 tavily_tool = TavilySearchTool()
 
 
-# Definice funkcí pro agenta
 def database_query(query: Annotated[str, "SQL dotaz k vykonání"]) -> str:
     """Vykonání SQL dotazu na databázi s tabulkami users, products a orders"""
     results = db_tool.execute_query(query)
@@ -296,7 +284,7 @@ def price_comparison(
     result = tavily_tool.search(
         query=query,
         max_results=5,
-        include_domains=["heureka.cz", "zbozi.cz", "pricemania.cz"],
+        include_domains=["heureka.cz", "zbozi.cz", "allegro.cz"],
         search_depth="advanced"
     )
     return json.dumps(result, ensure_ascii=False, indent=2)
@@ -342,7 +330,6 @@ DOSTUPNÉ NÁSTROJE:
 Vždy odpovídej v češtině a postupuj podle ReAct schématu.
 """
     
-    # Vytvoření agenta
     agent = ConversableAgent(
         name="ReactAgent",
         system_message=system_message,
@@ -350,7 +337,6 @@ Vždy odpovídej v češtině a postupuj podle ReAct schématu.
         human_input_mode="NEVER",
     )
     
-    # Vytvoření user proxy
     user_proxy = ConversableAgent(
         name="UserProxy",
         llm_config=False,
@@ -358,7 +344,6 @@ Vždy odpovídej v češtině a postupuj podle ReAct schématu.
         human_input_mode="NEVER",
     )
     
-    # Registrace funkcí
     register_function(
         database_query,
         caller=agent,
@@ -412,7 +397,6 @@ def process_query(agent, user_proxy, query: str) -> str:
             silent=False
         )
         
-        # Získání poslední zprávy
         messages = user_proxy.chat_messages.get(agent, [])
         if messages:
             last_msg = messages[-1].get("content", "")
@@ -426,7 +410,7 @@ def process_query(agent, user_proxy, query: str) -> str:
 
 def main():
     """Hlavní funkce"""
-    print("🤖 AI Agent s ReAct architekturou a MCP nástroji")
+    print("AI Agent s ReAct architekturou a MCP nástroji")
     print("=" * 60)
     
     # Vytvoření agenta
@@ -440,7 +424,7 @@ def main():
     ]
     
     for i, query in enumerate(test_queries, 1):
-        print(f"\n🔍 Test {i}: {query}")
+        print(f"\n Test {i}: {query}")
         print("-" * 50)
         
         try:
