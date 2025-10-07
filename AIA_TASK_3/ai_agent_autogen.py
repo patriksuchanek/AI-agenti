@@ -315,7 +315,6 @@ Jsi inteligentní asistent s přístupem k různým nástrojům. Používáš Re
 5. Opakuj dokud nemáš kompletní odpověď
 
 DOSTUPNÉ NÁSTROJE:
-
 1. **database_query(query: str)** - SQL dotaz na databázi
    Tabulky: users, products, orders
    
@@ -326,6 +325,11 @@ DOSTUPNÉ NÁSTROJE:
 4. **product_search(query: str, category: str = None)** - Vyhledávání produktů
 
 5. **price_comparison(product_name: str, brand: str = None)** - Srovnání cen
+
+**DŮLEŽITÉ:**
+- Když máš kompletní odpověď na dotaz uživatele, VŽDY ukonči svou zprávu slovem "TERMINATE"
+- Neiteruj zbytečně - jakmile máš všechny potřebné informace, odpověz a ukonči
+- Formát závěrečné zprávy: "[tvá odpověď]\n\nTERMINATE"
 
 Vždy odpovídej v češtině a postupuj podle ReAct schématu.
 """
@@ -418,9 +422,10 @@ def main():
     
     # Testovací dotazy
     test_queries = [
-        "Najdi všechny notebooky značky Apple v databázi",
+        "Najdi všechny produkty značky Apple v databázi",
         "Kolik produktů máme v kategorii Elektronika?",
         "Zobraz objednávky uživatele Jana Nováka",
+        "Kolik stojí aktuálně iPhone 15",
     ]
     
     for i, query in enumerate(test_queries, 1):
